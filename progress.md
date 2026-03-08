@@ -34,3 +34,5 @@ Original prompt: Manga Mincraftga oxshagan oyin qiber 1/1 bosin.
 - Added mobile UI controls (virtual move pad, look pad, jump/break/place buttons) and touch handling in game loop.
 - Added hotbar touch/pointer selection and mobile-aware status text.
 - Added `.gitignore` for node_modules/output/log/editor artifacts.
+- Fixed Vercel black-screen root cause by removing node_modules importmap dependency and switching Three.js import to CDN URL.
+- Verified runtime with Playwright after change (state emitted, no errors file generated).

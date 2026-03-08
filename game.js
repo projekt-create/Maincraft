@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.183.2/build/three.module.js";
 
 const CHUNK_SIZE = 16;
 const WORLD_MAX_Y = 32;
