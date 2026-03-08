@@ -1,0 +1,18 @@
+{
+  "name": "mincraft",
+  "version": "1.0.0",
+  "description": "Minecraft-like voxel sandbox in the browser",
+  "type": "module",
+  "main": "game.js",
+  "scripts": {
+    "start": "sh -c 'python3 -m http.server ${PORT:-4173}'",
+    "test": "echo \"No automated unit tests\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "playwright": "^1.58.2",
+    "three": "^0.183.2"
+  }
+}

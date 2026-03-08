@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mincraft Sandbox</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./node_modules/three/build/three.module.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="hud">
+      <div id="title">MINCRAFT</div>
+      <div id="status">Click canvas to lock mouse • LMB break • RMB place • 1-4 select • F fullscreen</div>
+      <div id="hotbar"></div>
+    </div>
+    <div id="crosshair" aria-hidden="true"></div>
+    <div id="mobile-ui" aria-hidden="true">
+      <div id="move-pad" class="touch-pad">
+        <div id="move-stick" class="touch-stick"></div>
+      </div>
+      <div id="look-pad">Drag to look</div>
+      <div id="mobile-actions">
+        <button id="jump-btn" class="mobile-btn" type="button">Jump</button>
+        <button id="break-btn" class="mobile-btn" type="button">Break</button>
+        <button id="place-btn" class="mobile-btn" type="button">Place</button>
+      </div>
+    </div>
+    <script type="module" src="./game.js"></script>
+  </body>
+</html>

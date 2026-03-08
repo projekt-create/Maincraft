@@ -1,0 +1,36 @@
+Original prompt: Manga Mincraftga oxshagan oyin qiber 1/1 bosin.
+
+- Initialized empty project for a Minecraft-like web game.
+- Confirmed Node (v20.19.5) and npx are available.
+- Next: scaffold game files and implement first playable version.
+- Implemented first playable voxel sandbox in `index.html`, `styles.css`, and `game.js`.
+- Features: generated terrain + trees, first-person movement/jump, block break/place via mouse, hotbar (1-6), fullscreen toggle (`f`), target outline, HUD.
+- Added required hooks: `window.render_game_to_text` and deterministic `window.advanceTime(ms)`.
+- Next: run Playwright client, inspect screenshots/state/errors, and fix issues.
+- Found automated test issue: pointer-lock mouse movement could spike pitch upward during scripted mouse moves.
+- Mitigated by clamping mouse delta per event and setting a more downward default pitch.
+- Added keyboard fallback interactions (`B` to break, `Enter` to place) to keep controls testable without mouse clicks.
+- Major refactor complete: switched from fixed finite world to infinite chunk-based procedural terrain.
+- Added chunk streaming by player view direction (front cone) + near safety radius, with dynamic load/unload and per-frame budgets.
+- Reworked block storage with persistent edit maps so placed/broken blocks stay consistent while chunks unload/reload.
+- Rebuilt meshing per chunk with exposed-face filtering and instanced meshes; added frustum-friendly chunk meshes.
+- Updated interaction logic for reliable placement/removal in infinite world.
+- Tuned startup chunk loading to incremental prefill (12 budgeted passes) to avoid long initial stalls.
+- Tightened streaming cone: reduced far chunk radius and increased forward-direction threshold so non-visible regions unload more aggressively.
+- Verified with Playwright action bursts: movement, jump, break (`B`) and place (`Enter`) execute without console/page errors.
+- Latest state checks show `loaded_chunks` reduced to ~59 with forward-cone streaming active.
+- Placement/removal persistence confirmed via `saved_edit_chunks` changes in `render_game_to_text` output.
+- Resolved `Address already in use` startup failure by terminating stale python http.server process on port 4173.
+- Updated npm start script to support configurable port: `PORT=<port> npm start`.
+- Added camera turning while moving via ArrowLeft/ArrowRight and Q/E; A/D now dedicated to strafe.
+- Added auto pointer-lock request on movement keys as a fallback for camera control usability.
+- Added water block type with transparency and non-solid collision behavior.
+- Added deterministic tree generation per chunk and fog/water visual polish.
+- Allowed block placement to replace water blocks (fixes common placement failure near water).
+- Verified camera turning while moving: yaw changed across automated runs using ArrowLeft/ArrowRight.
+- Verified visuals: screenshots now show tree canopies/trunks and water bodies.
+- Verified placement works in latest build (`saved_edit_chunks` increments to 1 after place action).
+- Fixed camera look issue: added non-pointer-lock mouse look on canvas so camera rotates while moving even before lock.
+- Added mobile UI controls (virtual move pad, look pad, jump/break/place buttons) and touch handling in game loop.
+- Added hotbar touch/pointer selection and mobile-aware status text.
+- Added `.gitignore` for node_modules/output/log/editor artifacts.

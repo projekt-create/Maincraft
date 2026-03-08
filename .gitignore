@@ -1,0 +1,10 @@
+node_modules/
+output/
+
+# logs
+*.log
+npm-debug.log*
+
+# editor / OS
+.DS_Store
+.vscode/
