@@ -36,3 +36,6 @@ Original prompt: Manga Mincraftga oxshagan oyin qiber 1/1 bosin.
 - Added `.gitignore` for node_modules/output/log/editor artifacts.
 - Fixed Vercel black-screen root cause by removing node_modules importmap dependency and switching Three.js import to CDN URL.
 - Verified runtime with Playwright after change (state emitted, no errors file generated).
+- Added forced mobile landscape lock: gameplay input pauses in portrait and resumes in landscape.
+- Added explicit mobile move buttons (↑ ← ↓ →) in addition to virtual joystick.
+- Verified with Playwright mobile emulation: portrait => `mobile_orientation_blocked=true`, landscape => `false`.

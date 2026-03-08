@@ -67,6 +67,39 @@ canvas {
   display: none;
 }
 
+#orientation-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 18, 11, 0.88);
+  color: #f5fff4;
+  text-align: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+#orientation-card {
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 14px;
+  padding: 18px 16px;
+  max-width: 360px;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+#orientation-title {
+  font-size: 21px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+#orientation-text {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
 #crosshair {
   position: fixed;
   left: 50%;
@@ -100,99 +133,144 @@ canvas {
   height: 2px;
 }
 
-@media (hover: none) and (pointer: coarse) {
-  #hud {
-    max-width: 96vw;
-  }
+body.mobile-enabled #hud {
+  max-width: 96vw;
+}
 
-  #status {
-    font-size: 12px;
-    line-height: 1.25;
-  }
+body.mobile-enabled #status {
+  font-size: 12px;
+  line-height: 1.25;
+}
 
-  #hotbar {
-    gap: 6px;
-    font-size: 12px;
-  }
+body.mobile-enabled #hotbar {
+  gap: 6px;
+  font-size: 12px;
+}
 
-  .hotbar-item {
-    padding: 5px 8px;
-    border-radius: 7px;
-  }
+body.mobile-enabled .hotbar-item {
+  padding: 5px 8px;
+  border-radius: 7px;
+}
 
-  #mobile-ui {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 20;
-    pointer-events: none;
-  }
+body.mobile-enabled #mobile-ui {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
 
-  .touch-pad {
-    position: fixed;
-    left: 16px;
-    bottom: 22px;
-    width: 124px;
-    height: 124px;
-    border-radius: 50%;
-    border: 2px solid rgba(0, 0, 0, 0.35);
-    background: rgba(255, 255, 255, 0.2);
-    pointer-events: auto;
-    touch-action: none;
-  }
+body.mobile-enabled .touch-pad {
+  position: fixed;
+  left: 16px;
+  bottom: 22px;
+  width: 124px;
+  height: 124px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  background: rgba(255, 255, 255, 0.2);
+  pointer-events: auto;
+  touch-action: none;
+}
 
-  .touch-stick {
-    position: absolute;
-    width: 52px;
-    height: 52px;
-    left: 36px;
-    top: 36px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.6);
-    border: 2px solid rgba(0, 0, 0, 0.38);
-    box-sizing: border-box;
-  }
+body.mobile-enabled .touch-stick {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  left: 36px;
+  top: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  border: 2px solid rgba(0, 0, 0, 0.38);
+  box-sizing: border-box;
+}
 
-  #look-pad {
-    position: fixed;
-    right: 14px;
-    top: 30%;
-    width: 42vw;
-    height: 48vh;
-    border: 1px dashed rgba(255, 255, 255, 0.28);
-    border-radius: 14px;
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: auto;
-    touch-action: none;
-    background: rgba(0, 0, 0, 0.09);
-  }
+body.mobile-enabled #look-pad {
+  position: fixed;
+  right: 14px;
+  top: 28%;
+  width: 44vw;
+  height: 46vh;
+  border: 1px dashed rgba(255, 255, 255, 0.28);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  touch-action: none;
+  background: rgba(0, 0, 0, 0.09);
+}
 
-  #mobile-actions {
-    position: fixed;
-    right: 14px;
-    bottom: 22px;
-    display: flex;
-    gap: 8px;
-    pointer-events: auto;
-  }
+body.mobile-enabled #mobile-move-buttons {
+  position: fixed;
+  left: 154px;
+  bottom: 24px;
+  display: grid;
+  grid-template-columns: repeat(3, 48px);
+  grid-template-rows: repeat(2, 44px);
+  gap: 6px;
+  grid-template-areas:
+    ". fwd ."
+    "left back right";
+  pointer-events: auto;
+}
 
-  .mobile-btn {
-    border: 2px solid rgba(0, 0, 0, 0.45);
-    border-radius: 10px;
-    padding: 10px 12px;
-    font-weight: 700;
-    background: rgba(255, 255, 255, 0.76);
-    color: #18201a;
-    min-width: 62px;
-    touch-action: manipulation;
-  }
+#move-forward-btn {
+  grid-area: fwd;
+}
 
-  .mobile-btn:active {
-    transform: scale(0.96);
-    background: rgba(182, 255, 174, 0.92);
-  }
+#move-left-btn {
+  grid-area: left;
+}
+
+#move-back-btn {
+  grid-area: back;
+}
+
+#move-right-btn {
+  grid-area: right;
+}
+
+body.mobile-enabled #mobile-actions {
+  position: fixed;
+  right: 14px;
+  bottom: 22px;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+body.mobile-enabled .mobile-btn {
+  border: 2px solid rgba(0, 0, 0, 0.45);
+  border-radius: 10px;
+  padding: 9px 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.76);
+  color: #18201a;
+  min-width: 56px;
+  touch-action: manipulation;
+}
+
+body.mobile-enabled .mobile-btn:active {
+  transform: scale(0.96);
+  background: rgba(182, 255, 174, 0.92);
+}
+
+body.mobile-enabled.orientation-locked #orientation-overlay {
+  display: flex;
+}
+
+body.mobile-enabled.orientation-locked #mobile-ui {
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+body.mobile-enabled.orientation-locked canvas {
+  filter: blur(2px) saturate(0.75);
+}
+
+body.mobile-enabled.orientation-locked #crosshair {
+  display: none;
 }

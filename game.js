@@ -90,10 +90,19 @@ const mobileUiEl = document.getElementById("mobile-ui");
 const movePadEl = document.getElementById("move-pad");
 const moveStickEl = document.getElementById("move-stick");
 const lookPadEl = document.getElementById("look-pad");
+const moveForwardBtnEl = document.getElementById("move-forward-btn");
+const moveLeftBtnEl = document.getElementById("move-left-btn");
+const moveBackBtnEl = document.getElementById("move-back-btn");
+const moveRightBtnEl = document.getElementById("move-right-btn");
 const jumpBtnEl = document.getElementById("jump-btn");
 const breakBtnEl = document.getElementById("break-btn");
 const placeBtnEl = document.getElementById("place-btn");
-const isMobileInput = window.matchMedia("(hover: none) and (pointer: coarse)").matches || "ontouchstart" in window;
+const orientationOverlayEl = document.getElementById("orientation-overlay");
+const isMobileInput =
+  /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+  window.matchMedia("(hover: none) and (pointer: coarse)").matches ||
+  navigator.maxTouchPoints > 0 ||
+  "ontouchstart" in window;
 
 const state = {
   mode: "playing",
@@ -115,6 +124,7 @@ const state = {
   },
   mobile: {
     enabled: isMobileInput,
+    orientationBlocked: false,
     move: {
       activeId: null,
       axisX: 0,
@@ -134,8 +144,44 @@ const loadedChunks = new Map();
 const chunkEdits = new Map();
 const dirtyChunkKeys = new Set();
 
-if (state.mobile.enabled && mobileUiEl) {
-  mobileUiEl.setAttribute("aria-hidden", "false");
+function clearMobileLook() {
+  state.mobile.look.activeId = null;
+}
+
+function clearMobileMove() {
+  state.mobile.move.activeId = null;
+  state.mobile.move.axisX = 0;
+  state.mobile.move.axisY = 0;
+  setMoveStickVisual(0, 0);
+}
+
+function isLandscapeOrientation() {
+  return window.innerWidth >= window.innerHeight;
+}
+
+function updateMobileModeClasses() {
+  document.body.classList.toggle("mobile-enabled", state.mobile.enabled);
+
+  const blocked = state.mobile.enabled && !isLandscapeOrientation();
+  state.mobile.orientationBlocked = blocked;
+  document.body.classList.toggle("orientation-locked", blocked);
+
+  if (mobileUiEl) {
+    mobileUiEl.setAttribute("aria-hidden", state.mobile.enabled ? "false" : "true");
+  }
+  if (orientationOverlayEl) {
+    orientationOverlayEl.setAttribute("aria-hidden", blocked ? "false" : "true");
+  }
+
+  if (blocked) {
+    clearMobileMove();
+    clearMobileLook();
+    state.mobile.jumpRequested = false;
+    state.keys.delete("KeyW");
+    state.keys.delete("KeyA");
+    state.keys.delete("KeyS");
+    state.keys.delete("KeyD");
+  }
 }
 
 function chunkKey(cx, cz) {
@@ -681,6 +727,10 @@ function movePlayerAxis(axis, delta) {
 
 function updateMovement(dt) {
   const p = state.player;
+  if (isGameplayInputBlocked()) {
+    p.vel.set(0, 0, 0);
+    return;
+  }
 
   let forward = 0;
   let strafe = 0;
@@ -856,7 +906,14 @@ function playerIntersectsBlock(bx, by, bz) {
   return maxX > bx && minX < bx + 1 && maxY > by && minY < by + 1 && maxZ > bz && minZ < bz + 1;
 }
 
+function isGameplayInputBlocked() {
+  return state.mobile.enabled && state.mobile.orientationBlocked;
+}
+
 function breakTargetBlock() {
+  if (isGameplayInputBlocked()) {
+    return;
+  }
   if (!state.target) {
     return;
   }
@@ -868,6 +925,9 @@ function breakTargetBlock() {
 }
 
 function placeSelectedBlock() {
+  if (isGameplayInputBlocked()) {
+    return;
+  }
   if (!state.target) {
     return;
   }
@@ -926,10 +986,19 @@ function updateStatusText(force) {
     ? `Target ${state.target.type} @ ${state.target.x},${state.target.y},${state.target.z}`
     : "Target none";
   const controlsText = state.mobile.enabled
-    ? "Mobile: Left pad move • Right pad look • Jump/Break/Place"
+    ? state.mobile.orientationBlocked
+      ? "Landscape required: rotate phone"
+      : "Mobile: Move pad/buttons • Look pad • Jump/Break/Place"
     : "Move: WASD/Arrows • Turn: Mouse or Q/E/Arrows • LMB/RMB or B/Enter";
+  const lockText = state.mobile.enabled
+    ? state.mobile.orientationBlocked
+      ? "Mobile paused"
+      : "Mobile active"
+    : state.pointerLocked
+      ? "Mouse locked"
+      : "Click canvas to lock mouse";
 
-  statusEl.textContent = `${state.pointerLocked ? "Mouse locked" : "Click canvas to lock mouse"} • ${targetText} • Chunks ${state.loadedChunkCount} • ${controlsText} • ${selectedType.label} • XYZ ${p.pos.x.toFixed(1)}, ${p.pos.y.toFixed(1)}, ${p.pos.z.toFixed(1)}`;
+  statusEl.textContent = `${lockText} • ${targetText} • Chunks ${state.loadedChunkCount} • ${controlsText} • ${selectedType.label} • XYZ ${p.pos.x.toFixed(1)}, ${p.pos.y.toFixed(1)}, ${p.pos.z.toFixed(1)}`;
 }
 
 const hotbarItems = [];
@@ -980,9 +1049,14 @@ function onResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  updateMobileModeClasses();
+  updateStatusText(true);
 }
 
 window.addEventListener("resize", onResize);
+window.addEventListener("orientationchange", () => {
+  window.setTimeout(onResize, 40);
+});
 document.addEventListener("fullscreenchange", onResize);
 
 window.addEventListener("keydown", (event) => {
@@ -994,6 +1068,10 @@ window.addEventListener("keydown", (event) => {
     event.code === "Space"
   ) {
     event.preventDefault();
+  }
+
+  if (isGameplayInputBlocked()) {
+    return;
   }
 
   if (event.code.startsWith("Digit")) {
@@ -1056,6 +1134,9 @@ document.addEventListener("pointerlockchange", () => {
 });
 
 function applyMouseLook(moveXRaw, moveYRaw) {
+  if (isGameplayInputBlocked()) {
+    return;
+  }
   const sensitivityX = 0.0023;
   const sensitivityY = 0.0019;
   const moveX = THREE.MathUtils.clamp(moveXRaw, -80, 80);
@@ -1098,10 +1179,7 @@ function setMoveStickVisual(axisX, axisY) {
 }
 
 function clearMoveAxis() {
-  state.mobile.move.activeId = null;
-  state.mobile.move.axisX = 0;
-  state.mobile.move.axisY = 0;
-  setMoveStickVisual(0, 0);
+  clearMobileMove();
 }
 
 function updateMoveAxisFromTouch(touch) {
@@ -1128,10 +1206,42 @@ function bindMobileControls() {
     return;
   }
 
+  const bindMoveButton = (element, keyCode) => {
+    if (!element) {
+      return;
+    }
+    const press = (event) => {
+      event.preventDefault();
+      if (isGameplayInputBlocked()) {
+        return;
+      }
+      state.keys.add(keyCode);
+    };
+    const release = (event) => {
+      event.preventDefault();
+      state.keys.delete(keyCode);
+    };
+    element.addEventListener("touchstart", press, { passive: false });
+    element.addEventListener("touchend", release, { passive: false });
+    element.addEventListener("touchcancel", release, { passive: false });
+    element.addEventListener("pointerdown", press);
+    element.addEventListener("pointerup", release);
+    element.addEventListener("pointercancel", release);
+    element.addEventListener("pointerleave", release);
+  };
+
+  bindMoveButton(moveForwardBtnEl, "KeyW");
+  bindMoveButton(moveLeftBtnEl, "KeyA");
+  bindMoveButton(moveBackBtnEl, "KeyS");
+  bindMoveButton(moveRightBtnEl, "KeyD");
+
   movePadEl.addEventListener(
     "touchstart",
     (event) => {
       event.preventDefault();
+      if (isGameplayInputBlocked()) {
+        return;
+      }
       if (state.mobile.move.activeId !== null) {
         return;
       }
@@ -1146,6 +1256,9 @@ function bindMobileControls() {
     "touchmove",
     (event) => {
       event.preventDefault();
+      if (isGameplayInputBlocked()) {
+        return;
+      }
       if (state.mobile.move.activeId === null) {
         return;
       }
@@ -1173,6 +1286,9 @@ function bindMobileControls() {
     "touchstart",
     (event) => {
       event.preventDefault();
+      if (isGameplayInputBlocked()) {
+        return;
+      }
       if (state.mobile.look.activeId !== null) {
         return;
       }
@@ -1188,6 +1304,9 @@ function bindMobileControls() {
     "touchmove",
     (event) => {
       event.preventDefault();
+      if (isGameplayInputBlocked()) {
+        return;
+      }
       if (state.mobile.look.activeId === null) {
         return;
       }
@@ -1218,6 +1337,9 @@ function bindMobileControls() {
 
   const tapHandler = (action) => (event) => {
     event.preventDefault();
+    if (isGameplayInputBlocked()) {
+      return;
+    }
     action();
   };
   if (jumpBtnEl) {
@@ -1250,6 +1372,10 @@ window.addEventListener("mousedown", (event) => {
 });
 
 function tick(dt) {
+  if (isGameplayInputBlocked()) {
+    updateStatusText(false);
+    return;
+  }
   updateMovement(dt);
   updateCamera();
   updateChunkStreaming(false);
@@ -1292,6 +1418,7 @@ window.render_game_to_text = () => {
     loaded_chunks: state.loadedChunkCount,
     saved_edit_chunks: chunkEdits.size,
     mobile_enabled: state.mobile.enabled,
+    mobile_orientation_blocked: state.mobile.orientationBlocked,
     mobile_move_axis: {
       x: Number(state.mobile.move.axisX.toFixed(3)),
       y: Number(state.mobile.move.axisY.toFixed(3)),
@@ -1330,6 +1457,7 @@ const spawnHeight = getTerrainHeight(0, 0);
 state.player.pos.set(0.5, spawnHeight + 2, 0.5);
 buildHotbar();
 bindMobileControls();
+updateMobileModeClasses();
 updateCamera();
 for (let i = 0; i < 12; i++) {
   updateChunkStreaming(false);
