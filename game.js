@@ -44,16 +44,106 @@ const FACE_DIRECTIONS = [
   { x: 0, y: 0, z: -1 },
 ];
 
+function clampByte(value) {
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+function colorToRgb(hex) {
+  return {
+    r: (hex >> 16) & 255,
+    g: (hex >> 8) & 255,
+    b: hex & 255,
+  };
+}
+
+function seededNoise(x, y, seed) {
+  const v = Math.sin((x + seed * 13.7) * 12.9898 + (y + seed * 5.3) * 78.233) * 43758.5453;
+  return v - Math.floor(v);
+}
+
+function buildBlockTexture(type, index) {
+  const size = 32;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const base = colorToRgb(type.color);
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const noiseA = seededNoise(x, y, index + 3);
+      const noiseB = seededNoise(x * 2, y * 2, index + 11);
+      let shade = 0.8 + noiseA * 0.26;
+      let alpha = 1;
+
+      if (type.id === "grass") {
+        shade = y < 8 ? 0.95 + noiseA * 0.22 : 0.74 + noiseA * 0.23;
+        if ((x + y) % 7 === 0) {
+          shade += 0.12;
+        }
+      } else if (type.id === "dirt") {
+        shade = 0.66 + noiseA * 0.3;
+        if (noiseB > 0.84) {
+          shade += 0.16;
+        }
+      } else if (type.id === "stone") {
+        shade = 0.7 + noiseA * 0.22;
+        if (noiseB > 0.8) {
+          shade -= 0.2;
+        } else if (noiseB < 0.15) {
+          shade += 0.16;
+        }
+      } else if (type.id === "wood") {
+        const stripe = Math.sin((x + index * 3) * 0.75) * 0.18;
+        shade = 0.72 + noiseA * 0.16 + stripe;
+      } else if (type.id === "leaves") {
+        shade = 0.67 + noiseA * 0.3;
+        if (noiseB > 0.86) {
+          alpha = 0.8;
+        }
+      } else if (type.id === "sand") {
+        shade = 0.78 + noiseA * 0.22;
+        if (noiseB > 0.83) {
+          shade += 0.15;
+        }
+      } else if (type.id === "water") {
+        const wave = Math.sin((x + y + index * 5) * 0.45) * 0.14;
+        shade = 0.73 + noiseA * 0.2 + wave;
+        alpha = 0.66 + noiseB * 0.24;
+      }
+
+      const r = clampByte(base.r * shade);
+      const g = clampByte(base.g * shade);
+      const b = clampByte(base.b * (shade + (type.id === "water" ? 0.09 : 0)));
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha))})`;
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestMipmapLinearFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.generateMipmaps = true;
+  return texture;
+}
+
 const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
+const blockTextures = BLOCK_TYPES.map((type, index) => buildBlockTexture(type, index));
 const blockMaterials = BLOCK_TYPES.map(
-  (type) =>
+  (type, index) =>
     new THREE.MeshStandardMaterial({
       color: type.color,
-      roughness: type.id === "water" ? 0.25 : 0.95,
-      metalness: 0.04,
+      map: blockTextures[index],
+      roughness: type.id === "water" ? 0.18 : 0.86,
+      metalness: type.id === "water" ? 0.16 : 0.04,
       transparent: Boolean(type.transparent),
-      opacity: type.opacity ?? 1,
+      opacity: type.id === "water" ? 0.52 : type.opacity ?? 1,
       depthWrite: !type.transparent || type.id === "leaves",
+      alphaTest: type.id === "leaves" ? 0.28 : 0,
+      side: type.id === "water" ? THREE.DoubleSide : THREE.FrontSide,
     })
 );
 const instanceDummy = new THREE.Object3D();
@@ -68,14 +158,26 @@ camera.rotation.order = "YXZ";
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
 document.body.appendChild(renderer.domElement);
 
-const hemiLight = new THREE.HemisphereLight(0xd9edff, 0x86684f, 1.08);
+const maxAnisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+for (const texture of blockTextures) {
+  texture.anisotropy = maxAnisotropy;
+}
+
+const hemiLight = new THREE.HemisphereLight(0xe4f3ff, 0x7a5b45, 1.12);
 scene.add(hemiLight);
 
-const sunLight = new THREE.DirectionalLight(0xffffff, 0.92);
+const sunLight = new THREE.DirectionalLight(0xfff3dd, 0.95);
 sunLight.position.set(25, 35, 18);
 scene.add(sunLight);
+
+const fillLight = new THREE.DirectionalLight(0xc5deff, 0.26);
+fillLight.position.set(-28, 22, -16);
+scene.add(fillLight);
 
 const targetOutline = new THREE.LineSegments(
   new THREE.EdgesGeometry(new THREE.BoxGeometry(1.04, 1.04, 1.04)),
@@ -316,10 +418,6 @@ function isSolidBlock(x, y, z) {
   return BLOCK_TYPES[typeIndex].solid !== false;
 }
 
-function hasAnyBlock(x, y, z) {
-  return getBlockType(x, y, z) !== null;
-}
-
 function markChunkDirty(cx, cz) {
   const key = chunkKey(cx, cz);
   const chunk = loadedChunks.get(key);
@@ -473,6 +571,7 @@ function createChunkMesh(typeIndex, key, capacity) {
   const mesh = new THREE.InstancedMesh(blockGeometry, blockMaterials[typeIndex], Math.max(1, capacity));
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.frustumCulled = true;
+  mesh.renderOrder = typeIndex === BLOCK_INDEX_WATER ? 3 : BLOCK_TYPES[typeIndex].transparent ? 2 : 0;
   mesh.userData.typeIndex = typeIndex;
   mesh.userData.chunkKey = key;
   return {
@@ -522,9 +621,26 @@ function ensureChunkMeshCapacity(chunk, typeIndex, needed) {
   return replacement;
 }
 
-function isBlockExposed(x, y, z) {
+function isFaceOpen(currentTypeIndex, neighborTypeIndex) {
+  if (neighborTypeIndex === null) {
+    return true;
+  }
+  if (currentTypeIndex === BLOCK_INDEX_WATER) {
+    return false;
+  }
+  if (neighborTypeIndex === BLOCK_INDEX_WATER) {
+    return true;
+  }
+  if (neighborTypeIndex === BLOCK_INDEX_LEAVES && currentTypeIndex !== BLOCK_INDEX_LEAVES) {
+    return true;
+  }
+  return false;
+}
+
+function isBlockExposed(x, y, z, typeIndex) {
   for (const dir of FACE_DIRECTIONS) {
-    if (!hasAnyBlock(x + dir.x, y + dir.y, z + dir.z)) {
+    const neighborType = getBlockType(x + dir.x, y + dir.y, z + dir.z);
+    if (isFaceOpen(typeIndex, neighborType)) {
       return true;
     }
   }
@@ -539,7 +655,7 @@ function rebuildChunkMeshes(chunk) {
     const worldX = chunk.cx * CHUNK_SIZE + local.lx;
     const worldZ = chunk.cz * CHUNK_SIZE + local.lz;
 
-    if (isBlockExposed(worldX, local.y, worldZ)) {
+    if (isBlockExposed(worldX, local.y, worldZ, typeIndex)) {
       grouped[typeIndex].push(local);
     }
   }
@@ -964,14 +1080,34 @@ function updateSky(dt) {
   const r = 0.38 + dayWave * 0.29;
   const g = 0.59 + dayWave * 0.25;
   const b = 0.82 + dayWave * 0.16;
+  const px = Math.floor(state.player.pos.x);
+  const py = Math.floor(state.player.pos.y + state.player.eyeHeight * 0.42);
+  const pz = Math.floor(state.player.pos.z);
+  const eyeInWater = getBlockType(px, py, pz) === BLOCK_INDEX_WATER;
+
   scene.background.setRGB(r, g, b);
-  scene.fog.color.setRGB(r * 0.92, g * 0.95, b);
+  if (eyeInWater) {
+    scene.fog.color.setRGB(0.16, 0.42, 0.62);
+    scene.fog.near = 2;
+    scene.fog.far = 42;
+  } else {
+    scene.fog.color.setRGB(r * 0.92, g * 0.95, b);
+    scene.fog.near = 32;
+    scene.fog.far = 185;
+  }
   hemiLight.intensity = 0.72 + dayWave * 0.55;
   sunLight.intensity = 0.45 + dayWave * 0.7;
+  fillLight.intensity = 0.2 + dayWave * 0.2;
 
   const waterMaterial = blockMaterials[BLOCK_INDEX_WATER];
   const shimmer = 0.78 + dayWave * 0.2;
   waterMaterial.color.setRGB(0.2, 0.45 * shimmer, 0.75 * shimmer);
+  waterMaterial.opacity = eyeInWater ? 0.42 : 0.5;
+  waterMaterial.emissive.setRGB(0.03, 0.07, 0.1);
+  if (waterMaterial.map) {
+    waterMaterial.map.offset.x = (state.time * 0.035) % 1;
+    waterMaterial.map.offset.y = (state.time * 0.02) % 1;
+  }
 }
 
 function updateStatusText(force) {
